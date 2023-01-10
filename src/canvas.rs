@@ -1,7 +1,6 @@
 use super::Label;
 
 use super::Size2D;
-use std::borrow::Cow;
 use std::path::Path;
 use winit::window::Window;
 
@@ -16,7 +15,6 @@ pub(crate) struct Canvas {
     pub(crate) surface: wgpu::Surface,
     pub(crate) config: wgpu::SurfaceConfiguration,
 }
-
 
 impl Canvas {
     pub(crate) async fn new(label: &Label, window: &Window) -> Self {
@@ -39,8 +37,10 @@ impl Canvas {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some(label.sublabel("device").as_str()),
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::downlevel_webgl2_defaults(),
+                    features:
+                        // Required for read-write storage buffer 
+                        wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+                    limits: wgpu::Limits::downlevel_defaults(),
                 },
                 None,
             )
@@ -88,7 +88,7 @@ impl Canvas {
       self.device
           .create_shader_module(wgpu::ShaderModuleDescriptor {
               label: Some(self.label.sublabel(label).as_str()),
-              source: wgpu::ShaderSource::Wgsl(Cow::from(source)),
+              source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::from(source)),
           })
     }
 }

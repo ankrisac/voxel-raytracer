@@ -7,114 +7,41 @@ use winit::{
 type Size2D = winit::dpi::PhysicalSize<u32>;
 
 mod label;
-
-/// A combined surface and rendering context which
-/// manages all the wgpu handles requires for rendering
 mod canvas;
+mod pipeline;
+
 use crate::canvas::Canvas;
 use crate::label::Label;
+use crate::pipeline::Pipeline;
 
 struct Engine {
-    label: Label,
     canvas: Canvas,
-    pipeline: wgpu::RenderPipeline,
+    pipeline: Pipeline,
 }
 impl Engine {
     async fn new(label: &Label, window: &Window) -> Self {
         let canvas = Canvas::new(label, window).await;
-
-        let layout = canvas
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(label.sublabel("pipeline").sublabel("layout").as_str()),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            });
-
-        let module = canvas.load_shader("shaders/render.wgsl");
-
-        let pipeline = canvas
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label.sublabel("pipeline").as_str()),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: "vs_main",
-                    buffers: &[],
-                },
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    unclipped_depth: false,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    conservative: false,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: "fs_main",
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: canvas.config.format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview: None,
-            });
+        let pipeline = Pipeline::new(&canvas);
 
         Self {
-            label: label.to_owned(),
             canvas,
             pipeline,
         }
     }
 
+    fn resize(&mut self, size: Size2D) {
+        self.canvas.resize(size);
+        self.pipeline.resize(&self.canvas, size);
+    }
+
     fn render(&self) -> Result<(), wgpu::SurfaceError> {
         let frame = self.canvas.surface.get_current_texture()?;
-
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self
-            .canvas
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some(self.label.sublabel("render-encoder").as_str()),
-            });
+        self.pipeline.render(&self.canvas, &view);
 
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(self.label.sublabel("render-pass").as_str()),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            pass.set_pipeline(&self.pipeline);
-            pass.draw(0..3, 0..1);
-        }
-        
-        self.canvas.queue.submit(std::iter::once(encoder.finish()));
         frame.present();
 
         Ok(())
