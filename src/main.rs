@@ -97,6 +97,67 @@ impl Canvas {
 }
 
 
+struct Engine {
+    canvas: Canvas,
+    pipeline: wgpu::RenderPipeline,
+}
+impl Engine {
+    async fn new(label: &Label, window: &Window) -> Self {
+        let canvas = Canvas::new(label, window).await;
+
+        let layout = canvas
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(label.sublabel("pipeline").sublabel("layout").as_str()),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+
+        let module = canvas.load_shader("shaders/render.wgsl");
+
+        let pipeline = canvas
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label.sublabel("pipeline").as_str()),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: "vs_main",
+                    buffers: &[],
+                },
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    unclipped_depth: false,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: "fs_main",
+                    targets: &[
+                        Some(wgpu::ColorTargetState {
+                            format: canvas.config.format,
+                            blend: Some(wgpu::BlendState::REPLACE),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })
+                    ],
+                }),
+                multiview: None,
+            });
+
+        Self { canvas, pipeline }
+    }
+}
+
 fn main() {
     env_logger::init();
 
