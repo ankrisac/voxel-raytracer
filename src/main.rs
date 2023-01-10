@@ -1,3 +1,4 @@
+use label::Label;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -7,6 +8,11 @@ use winit::{
 type Size2D = winit::dpi::PhysicalSize<u32>;
 
 mod label;
+
+struct Context {
+    label: Label,
+    instance: wgpu::Instance,
+}
 
 fn main() {
     env_logger::init();

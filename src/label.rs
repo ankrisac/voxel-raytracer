@@ -4,7 +4,7 @@ pub(crate) struct Label {
     pub(crate) data: String,
 }
 impl Label {
-    fn sublabel<S: AsRef<&str>>(&self, s: &str) -> Label {
+    fn sublabel<S: AsRef<str>>(&self, s: S) -> Label {
         Self {
             data: self.data.clone() + "." + s.as_ref(),
         }
