@@ -1,1 +1,1 @@
-# voxel-raytracer
+# Voxel Raytracer
