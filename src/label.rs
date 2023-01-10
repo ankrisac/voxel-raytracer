@@ -1,13 +1,24 @@
 /// Namespaced labels of the form
 /// `foo.bar.baz`
-pub(crate) struct Label {
-    pub(crate) data: String,
+pub struct Label {
+    data: String,
 }
 impl Label {
-    fn sublabel<S: AsRef<str>>(&self, s: S) -> Label {
+    #[must_use]
+    pub fn sublabel<S: AsRef<str>>(&self, s: S) -> Label {
         Self {
             data: self.data.clone() + "." + s.as_ref(),
         }
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self.data.as_str()
+    }
+
+    #[must_use]
+    pub fn to_owned(&self) -> Self {
+        Self { data: self.data.clone() }
     }
 }
 
